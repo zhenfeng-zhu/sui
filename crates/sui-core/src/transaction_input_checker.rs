@@ -38,8 +38,8 @@ where
     let mut gas_status = check_gas(
         store,
         gas_object_ref,
-        transaction.gas_budget,
-        transaction.gas_price,
+        transaction.gas_budget(),
+        transaction.gas_price(),
         &transaction.kind,
         extra_gas_object_refs,
     )

@@ -1500,6 +1500,7 @@ impl From<PayAllSui> for SuiPayAllSui {
     }
 }
 
+// FIXME sync the change
 #[derive(Debug, Deserialize, Serialize, JsonSchema, Clone)]
 #[serde(rename = "TransactionData", rename_all = "camelCase")]
 pub struct SuiTransactionData {
@@ -1542,7 +1543,7 @@ impl TryFrom<TransactionData> for SuiTransactionData {
             transactions,
             sender: data.signer(),
             gas_payment: data.gas().into(),
-            gas_budget: data.gas_budget,
+            gas_budget: data.gas_budget(),
         })
     }
 }

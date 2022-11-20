@@ -314,26 +314,41 @@ bcs
     Batch: 'vector<Transaction>',
   });
 
+export type GasData = {
+    gasPayment: SuiObjectRef;
+    gasPrice: number;
+    gasBudget: number;
+    gasOwner: string;
+};
+
+bcs.registerStructType('GasData', {
+  gasPayment: 'SuiObjectRef',
+  gasPrice: 'u64',
+  gasBudget: 'u64',
+  gasOwner: 'address',
+});
+
 /**
  * The TransactionData to be signed and sent to the RPC service.
  *
  * Field `sender` is made optional as it can be added during the signing
  * process and there's no need to define it sooner.
  */
+
+
 export type TransactionData = {
-  sender?: string; //
-  gasBudget: number;
-  gasPrice: number;
+  sender?: string;
+  gasData: GasData;
   kind: TransactionKind;
-  gasPayment: SuiObjectRef;
 };
 
 bcs.registerStructType('TransactionData', {
   kind: 'TransactionKind',
   sender: 'address',
-  gasPayment: 'SuiObjectRef',
-  gasPrice: 'u64',
-  gasBudget: 'u64',
+  gasData: 'GasData',
+  // gasPayment: 'SuiObjectRef',
+  // gasPrice: 'u64',
+  // gasBudget: 'u64',
 });
 
 /**

@@ -447,7 +447,8 @@ fn test_digest_caching() {
 
     let initial_digest = *signed_tx.digest();
 
-    signed_tx.data_mut_for_testing().data.gas_budget += 1;
+    let data = &mut signed_tx.data_mut_for_testing().data;
+    data.set_gas_budget(data.gas_budget() + 1);
 
     // digest is cached
     assert_eq!(initial_digest, *signed_tx.digest());

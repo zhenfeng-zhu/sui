@@ -574,12 +574,19 @@ impl Display for TransactionKind {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
+pub struct GasData {
+    gas_payment: ObjectRef,
+    gas_price: u64,
+    gas_budget: u64,
+    gas_owner: SuiAddress,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
 pub struct TransactionData {
+    // TODO: why is kind public?
     pub kind: TransactionKind,
     sender: SuiAddress,
-    gas_payment: ObjectRef,
-    pub gas_price: u64,
-    pub gas_budget: u64,
+    gas_data: GasData,
 }
 
 impl TransactionData {
@@ -589,13 +596,17 @@ impl TransactionData {
         gas_payment: ObjectRef,
         gas_budget: u64,
     ) -> Self {
+        // FIXME this comment!!
+        // TODO: Update local-txn-data-serializer.ts if `gas_price` is changed
         TransactionData {
             kind,
             sender,
-            // TODO: Update local-txn-data-serializer.ts if `gas_price` is changed
-            gas_price: 1,
-            gas_payment,
-            gas_budget,
+            gas_data: GasData {
+                gas_price: 1,
+                gas_payment,
+                gas_budget,
+                gas_owner: sender,
+            },
         }
     }
 
@@ -609,9 +620,12 @@ impl TransactionData {
         TransactionData {
             kind,
             sender,
-            gas_price,
-            gas_payment,
-            gas_budget,
+            gas_data: GasData {
+                gas_price,
+                gas_payment,
+                gas_budget,
+                gas_owner: sender,
+            },
         }
     }
 
@@ -726,8 +740,25 @@ impl TransactionData {
         (&self.kind).into()
     }
 
+    // FIXME: do we need this when we have gas_payment_object_ref?
     pub fn gas(&self) -> ObjectRef {
-        self.gas_payment
+        self.gas_data.gas_payment
+    }
+
+    pub fn gas_budget(&self) -> u64 {
+        self.gas_data.gas_budget
+    }
+
+    pub fn set_gas_budget(&mut self, new_gas_budget: u64) {
+        self.gas_data.gas_budget = new_gas_budget;
+    }
+
+    pub fn gas_price(&self) -> u64 {
+        self.gas_data.gas_price
+    }
+
+    pub fn gas_owner(&self) -> SuiAddress {
+        self.gas_data.gas_owner
     }
 
     pub fn signer(&self) -> SuiAddress {
@@ -745,7 +776,7 @@ impl TransactionData {
     }
 
     pub fn gas_payment_object_ref(&self) -> &ObjectRef {
-        &self.gas_payment
+        &self.gas_data.gas_payment
     }
 
     pub fn contains_shared_object(&self) -> bool {
@@ -790,7 +821,7 @@ impl TransactionData {
                     fp_ensure!(!p.coins.is_empty(), SuiError::EmptyInputCoins);
                     fp_ensure!(
                         // unwrap() is safe because coins are not empty.
-                        p.coins.first().unwrap() == &self.gas_payment,
+                        p.coins.first().unwrap() == self.gas_payment_object_ref(),
                         SuiError::UnexpectedGasPaymentObject
                     );
                 }
@@ -798,7 +829,7 @@ impl TransactionData {
                     fp_ensure!(!pa.coins.is_empty(), SuiError::EmptyInputCoins);
                     fp_ensure!(
                         // unwrap() is safe because coins are not empty.
-                        pa.coins.first().unwrap() == &self.gas_payment,
+                        pa.coins.first().unwrap() == self.gas_payment_object_ref(),
                         SuiError::UnexpectedGasPaymentObject
                     );
                 }
@@ -829,6 +860,7 @@ impl Message for SenderSignedData {
     }
 
     fn verify(&self) -> SuiResult {
+        // FIXME check multi sigs
         if self.data.kind.is_system_tx() {
             return Ok(());
         }

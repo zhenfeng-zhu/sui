@@ -55,7 +55,7 @@ impl Operation {
             .flat_map(|tx| parse_operations(tx, sender, &mut counter, None, None))
             .flatten()
             .collect::<Vec<_>>();
-        let gas = Operation::gas_budget(&mut counter, None, data.gas(), data.gas_budget, sender);
+        let gas = Operation::gas_budget(&mut counter, None, data.gas(), data.gas_budget(), sender);
         ops.push(gas);
         Ok(ops)
     }
@@ -74,7 +74,8 @@ impl Operation {
             .flat_map(|tx| parse_operations(tx, sender, &mut counter, status, Some(events)))
             .flatten()
             .collect::<Vec<_>>();
-        let gas = Operation::gas_budget(&mut counter, status, data.gas(), data.gas_budget, sender);
+        let gas =
+            Operation::gas_budget(&mut counter, status, data.gas(), data.gas_budget(), sender);
         ops.push(gas);
         Ok(ops)
     }

@@ -64,6 +64,7 @@ export type SuiTransactionKind =
   | { Pay: Pay }
   | { PaySui: PaySui }
   | { PayAllSui: PayAllSui };
+
 export type SuiTransactionData = {
   transactions: SuiTransactionKind[];
   sender: SuiAddress;

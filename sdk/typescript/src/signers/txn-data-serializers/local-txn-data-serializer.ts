@@ -392,12 +392,15 @@ export class LocalTxnDataSerializer implements TxnDataSerializer {
         // TODO: support batch txns
         Single: tx,
       },
-      gasPayment: gasPayment!,
-      // Need to keep in sync with
-      // https://github.com/MystenLabs/sui/blob/f32877f2e40d35a008710c232e49b57aab886462/crates/sui-types/src/messages.rs#L338
-      gasPrice: 1,
-      gasBudget: originalTx.data.gasBudget,
       sender: signerAddress,
+      gasData: {
+        gasPayment: gasPayment!,
+        // Need to keep in sync with
+        // https://github.com/MystenLabs/sui/blob/f32877f2e40d35a008710c232e49b57aab886462/crates/sui-types/src/messages.rs#L338
+        gasPrice: 1,
+        gasBudget: originalTx.data.gasBudget,
+        gasOwner: signerAddress,
+      }
     };
 
     return await this.serializeTransactionData(txData);
@@ -453,16 +456,16 @@ export class LocalTxnDataSerializer implements TxnDataSerializer {
     if ('Single' in tx.kind) {
       return this.transformTransactionToSignableTransaction(
         tx.kind.Single,
-        tx.gasBudget,
-        tx.gasPayment
+        tx.gasData.gasBudget,
+        tx.gasData.gasPayment
       );
     }
     return Promise.all(
       tx.kind.Batch.map((t) =>
         this.transformTransactionToSignableTransaction(
           t,
-          tx.gasBudget,
-          tx.gasPayment
+          tx.gasData.gasBudget,
+          tx.gasData.gasPayment
         )
       )
     );
