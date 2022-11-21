@@ -856,7 +856,7 @@ impl Message for SenderSignedData {
     type DigestType = TransactionDigest;
 
     fn digest(&self) -> Self::DigestType {
-        TransactionDigest::new(sha3_hash(self))
+        TransactionDigest::new(sha3_hash(&self.data))
     }
 
     fn verify(&self) -> SuiResult {
@@ -932,12 +932,14 @@ impl Transaction {
         Self::from_data(data, signature)
     }
 
-    pub fn to_network_data_for_execution(&self) -> (Base64, SignatureScheme, Base64, Base64) {
+    // pub fn to_network_data_for_execution(&self) -> (Base64, SignatureScheme, Base64, Base64) {
+    pub fn to_network_data_for_execution(self) -> (Base64, Signature) {
         (
             Base64::from_bytes(&self.data().data.to_bytes()),
-            self.data().tx_signature.scheme(),
-            Base64::from_bytes(self.data().tx_signature.signature_bytes()),
-            Base64::from_bytes(self.data().tx_signature.public_key_bytes()),
+            self.into_data().tx_signature,
+            // self.data().tx_signature.scheme(),
+            // Base64::from_bytes(self.data().tx_signature.signature_bytes()),
+            // Base64::from_bytes(self.data().tx_signature.public_key_bytes()),
         )
     }
 }

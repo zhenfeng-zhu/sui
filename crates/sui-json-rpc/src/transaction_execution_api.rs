@@ -9,7 +9,6 @@ use fastcrypto::encoding::Base64;
 use jsonrpsee::core::RpcResult;
 use jsonrpsee_core::server::rpc_module::RpcModule;
 use move_bytecode_utils::module_cache::SyncModuleCache;
-use signature::Signature;
 use std::sync::Arc;
 use sui_core::authority::{AuthorityStore, ResolverWrapper};
 use sui_core::authority_client::NetworkAuthorityClient;
@@ -17,7 +16,7 @@ use sui_core::transaction_orchestrator::TransactiondOrchestrator;
 use sui_json_rpc_types::SuiExecuteTransactionResponse;
 use sui_metrics::spawn_monitored_task;
 use sui_open_rpc::Module;
-use sui_types::crypto::SignatureScheme;
+use sui_types::crypto::{Signature, SignatureScheme};
 use sui_types::messages::{
     ExecuteTransactionRequest, ExecuteTransactionRequestType, SenderSignedData,
 };
@@ -49,23 +48,24 @@ impl TransactionExecutionApiServer for FullNodeTransactionExecutionApi {
     async fn execute_transaction(
         &self,
         tx_bytes: Base64,
-        sig_scheme: SignatureScheme,
-        signature: Base64,
-        pub_key: Base64,
+        signature: Signature,
+        // sig_scheme: SignatureScheme,
+        // signature: Base64,
+        // pub_key: Base64,
         request_type: ExecuteTransactionRequestType,
     ) -> RpcResult<SuiExecuteTransactionResponse> {
         let data =
             TransactionData::from_signable_bytes(&tx_bytes.to_vec().map_err(|e| anyhow!(e))?)?;
-        let flag = vec![sig_scheme.flag()];
-        let signature = crypto::Signature::from_bytes(
-            &[
-                &*flag,
-                &*signature.to_vec().map_err(|e| anyhow!(e))?,
-                &pub_key.to_vec().map_err(|e| anyhow!(e))?,
-            ]
-            .concat(),
-        )
-        .map_err(|e| anyhow!(e))?;
+        // let flag = vec![sig_scheme.flag()];
+        // let signature = crypto::Signature::from_bytes(
+        //     &[
+        //         &*flag,
+        //         &*signature.to_vec().map_err(|e| anyhow!(e))?,
+        //         &pub_key.to_vec().map_err(|e| anyhow!(e))?,
+        //     ]
+        //     .concat(),
+        // )
+        // .map_err(|e| anyhow!(e))?;
         let txn = Transaction::new(SenderSignedData::new(data, signature));
         let txn_digest = *txn.digest();
 

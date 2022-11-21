@@ -20,7 +20,7 @@ use sui_open_rpc_macros::open_rpc;
 use sui_types::base_types::{ObjectID, SequenceNumber, SuiAddress, TransactionDigest};
 use sui_types::batch::TxSequenceNumber;
 use sui_types::committee::EpochId;
-use sui_types::crypto::SignatureScheme;
+use sui_types::crypto::{Signature, SignatureScheme};
 use sui_types::event::EventID;
 use sui_types::messages::CommitteeInfoResponse;
 use sui_types::messages::ExecuteTransactionRequestType;
@@ -481,12 +481,8 @@ pub trait TransactionExecutionApi {
         &self,
         /// transaction data bytes, as base-64 encoded string
         tx_bytes: Base64,
-        /// Flag of the signature scheme that is used.
-        sig_scheme: SignatureScheme,
-        /// transaction signature, as base-64 encoded string
-        signature: Base64,
-        /// signer's public key, as base-64 encoded string
-        pub_key: Base64,
+        signature: Signature,
+
         /// The request type
         request_type: ExecuteTransactionRequestType,
     ) -> RpcResult<SuiExecuteTransactionResponse>;

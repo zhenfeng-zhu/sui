@@ -354,9 +354,10 @@ impl QuorumDriver {
         let resp = TransactionExecutionApiClient::execute_transaction(
             &self.api.http,
             tx_bytes,
-            flag,
-            signature,
-            pub_key,
+            tx.into_inner().into_data().tx_signature,
+            // flag,
+            // signature,
+            // pub_key,
             request_type.clone(),
         )
         .await?;
