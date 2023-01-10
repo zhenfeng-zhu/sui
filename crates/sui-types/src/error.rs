@@ -721,6 +721,7 @@ impl From<VMError> for ExecutionError {
                     MoveLocation {
                         module: id.clone(),
                         function,
+			function_name: error.message().unwrap_or(&String::from("?? Move abort")).to_string(),
                         instruction,
                     },
                     code,
@@ -741,6 +742,7 @@ impl From<VMError> for ExecutionError {
                             Some(MoveLocation {
                                 module: id.clone(),
                                 function,
+				function_name: error.message().unwrap_or(&String::from("?? no fn, out of gas")).to_string(),
                                 instruction,
                             })
                         }

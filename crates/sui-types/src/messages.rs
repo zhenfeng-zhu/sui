@@ -1383,6 +1383,7 @@ pub enum ExecutionFailureStatus {
 pub struct MoveLocation {
     pub module: ModuleId,
     pub function: u16,
+    pub function_name: String,
     pub instruction: CodeOffset,
 }
 
@@ -1614,11 +1615,12 @@ impl Display for MoveLocation {
         let Self {
             module,
             function,
+	    function_name,
             instruction,
         } = self;
         write!(
             f,
-            "{module} in function definition {function} at offset {instruction}"
+            "{module} in function {function_name} (definition {function}) at offset {instruction}"
         )
     }
 }

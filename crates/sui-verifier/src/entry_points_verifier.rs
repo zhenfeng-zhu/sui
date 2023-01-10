@@ -42,7 +42,7 @@ pub fn verify_module(module: &CompiledModule) -> Result<(), ExecutionError> {
         verify_init_not_called(module, func_def).map_err(verification_failure)?;
 
         let handle = module.function_handle_at(func_def.function);
-        let name = module.identifier_at(handle.name);
+        let name = module.identifier_at(handle.name); // XXX this is how to get function name
         if name == INIT_FN_NAME {
             verify_init_function(module, func_def).map_err(verification_failure)?;
             continue;
