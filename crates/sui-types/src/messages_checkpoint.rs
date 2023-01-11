@@ -134,6 +134,12 @@ pub struct CheckpointSummary {
     /// they form a hash chain.
     pub next_epoch_committee: Option<Vec<(AuthorityName, StakeUnit)>>,
 
+    // /// The hash of the union of all checkpoint accumulators,
+    // /// representing the state of the system at the end of the epoch.
+    // /// None if this is not the last checkpoint of the epoch
+    // #[schemars(with = "Option<[u8; 32]>")]
+    // pub root_state_hash: Option<Digest<32>>,
+    /////////////////////////////////////////////////////////////
     /// Timestamp of the checkpoint - number of milliseconds from the Unix epoch
     /// Checkpoint timestamps are monotonic, but not strongly monotonic - subsequent
     /// checkpoints can have same timestamp if they originate from the same underlining consensus commit
@@ -149,6 +155,7 @@ impl CheckpointSummary {
         previous_digest: Option<CheckpointDigest>,
         epoch_rolling_gas_cost_summary: GasCostSummary,
         next_epoch_committee: Option<Committee>,
+        //root_state_hash: Option<Digest<32>>,
         timestamp_ms: CheckpointTimestamp,
     ) -> CheckpointSummary {
         let content_digest = transactions.digest();
@@ -161,6 +168,7 @@ impl CheckpointSummary {
             previous_digest,
             epoch_rolling_gas_cost_summary,
             next_epoch_committee: next_epoch_committee.map(|c| c.voting_rights),
+            //root_state_hash,
             timestamp_ms,
         }
     }
@@ -246,6 +254,7 @@ impl SignedCheckpointSummary {
         previous_digest: Option<CheckpointDigest>,
         epoch_rolling_gas_cost_summary: GasCostSummary,
         next_epoch_committee: Option<Committee>,
+        //root_state_hash: Option<Digest<32>>,
         timestamp_ms: CheckpointTimestamp,
     ) -> SignedCheckpointSummary {
         let checkpoint = CheckpointSummary::new(
@@ -256,6 +265,7 @@ impl SignedCheckpointSummary {
             previous_digest,
             epoch_rolling_gas_cost_summary,
             next_epoch_committee,
+            //root_state_hash,
             timestamp_ms,
         );
         SignedCheckpointSummary::new_from_summary(checkpoint, authority, signer)

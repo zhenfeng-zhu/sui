@@ -23,6 +23,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::authority::authority_per_epoch_store::AuthorityPerEpochStore;
 use crate::authority_aggregator::TransactionCertifier;
+// use crate::state_accumulator::{EnqueueHandle, State};
 use std::collections::HashSet;
 use std::ops::Deref;
 use std::path::Path;
@@ -65,6 +66,22 @@ pub struct PendingCheckpointInfo {
 pub struct PendingCheckpoint {
     pub roots: Vec<TransactionDigest>,
     pub details: PendingCheckpointInfo,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum CheckpointWatermark {
+    // highest checkpoint available in the network with
+    // a quorum of signatures
+    HighestVerified,
+
+    // highest checkpoint downloaded and persisted locally
+    HighestSynced,
+
+    // highest checkpoint executed
+    HighestExecuted,
+
+    // highest checkpoint with accumulated state
+    HighestAccumulated,
 }
 
 #[derive(DBMapUtils)]
@@ -338,13 +355,6 @@ impl CheckpointStore {
     }
 }
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
-pub enum CheckpointWatermark {
-    HighestVerified,
-    HighestSynced,
-    HighestExecuted,
-}
-
 pub struct CheckpointBuilder {
     state: Arc<AuthorityState>,
     tables: Arc<CheckpointStore>,
@@ -551,6 +561,19 @@ impl CheckpointBuilder {
                     .record_epoch_first_checkpoint_creation_time_metric();
             }
             let last_checkpoint_of_epoch = details.last_of_epoch && index == chunks_count - 1;
+
+            // let root_state_hash = if last_checkpoint_of_epoch {
+            //     let state = State {
+            //         effects,
+            //         end_of_epoch_flag: true,
+            //         checkpoint_seq_num,
+            //     };
+            //     accumulator.enqueue(state).await?;
+            //     accumulator.notify_read_root_hash(epoch)
+            // } else {
+            //     None
+            // };
+
             let digests_without_epoch_augment: Vec<_> =
                 effects.iter().map(|e| e.transaction_digest).collect();
             debug!("Waiting for checkpoint user signatures for certificates {:?} to appear in consensus", digests_without_epoch_augment);
@@ -617,6 +640,7 @@ impl CheckpointBuilder {
                 } else {
                     None
                 },
+                //root_state_hash,
                 timestamp_ms,
             );
             if last_checkpoint_of_epoch {

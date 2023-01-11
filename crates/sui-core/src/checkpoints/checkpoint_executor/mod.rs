@@ -40,6 +40,7 @@ use crate::authority::AuthorityStore;
 use crate::authority::{
     authority_per_epoch_store::AuthorityPerEpochStore, authority_store::EffectsStore,
 };
+// use crate::state_accumulator::{EnqueueHandle, State};
 use crate::transaction_manager::TransactionManager;
 use crate::{authority::EffectsNotifyRead, checkpoints::CheckpointStore};
 
@@ -56,6 +57,7 @@ pub struct CheckpointExecutor {
     checkpoint_store: Arc<CheckpointStore>,
     authority_store: Arc<AuthorityStore>,
     tx_manager: Arc<TransactionManager>,
+    // accumulator: EnqueueHandle,
     config: CheckpointExecutorConfig,
     metrics: Arc<CheckpointExecutorMetrics>,
 }
@@ -66,6 +68,7 @@ impl CheckpointExecutor {
         checkpoint_store: Arc<CheckpointStore>,
         authority_store: Arc<AuthorityStore>,
         tx_manager: Arc<TransactionManager>,
+        // accumulator: EnqueueHandle,
         config: CheckpointExecutorConfig,
         prometheus_registry: &Registry,
     ) -> Self {
@@ -74,6 +77,7 @@ impl CheckpointExecutor {
             checkpoint_store,
             authority_store,
             tx_manager,
+            // accumulator,
             config,
             metrics: CheckpointExecutorMetrics::new(prometheus_registry),
         }
@@ -84,12 +88,14 @@ impl CheckpointExecutor {
         checkpoint_store: Arc<CheckpointStore>,
         authority_store: Arc<AuthorityStore>,
         tx_manager: Arc<TransactionManager>,
+        // accumulator: EnqueueHandle,
     ) -> Self {
         Self {
             mailbox,
             checkpoint_store,
             authority_store,
             tx_manager,
+            // accumulator,
             config: Default::default(),
             metrics: CheckpointExecutorMetrics::new_for_tests(),
         }
@@ -242,6 +248,7 @@ impl CheckpointExecutor {
         let authority_store = self.authority_store.clone();
         let checkpoint_store = self.checkpoint_store.clone();
         let tx_manager = self.tx_manager.clone();
+        // let accumulator = self.accumulator.clone();
 
         pending.push_back(spawn_monitored_task!(async move {
             let epoch_store = epoch_store.clone();
@@ -253,6 +260,7 @@ impl CheckpointExecutor {
                 tx_manager.clone(),
                 local_execution_timeout_sec,
                 &metrics,
+                // &accumulator,
             )
             .await
             {
@@ -303,6 +311,7 @@ pub async fn execute_checkpoint(
     transaction_manager: Arc<TransactionManager>,
     local_execution_timeout_sec: u64,
     metrics: &Arc<CheckpointExecutorMetrics>,
+    // accumulator: &EnqueueHandle,
 ) -> SuiResult {
     debug!(
         "Scheduling checkpoint {:?} for execution",
@@ -333,7 +342,8 @@ pub async fn execute_checkpoint(
         epoch_store,
         transaction_manager,
         local_execution_timeout_sec,
-        checkpoint.sequence_number(),
+        checkpoint,
+        // accumulator,
     )
     .await
 }
@@ -344,7 +354,8 @@ async fn execute_transactions(
     epoch_store: &AuthorityPerEpochStore,
     transaction_manager: Arc<TransactionManager>,
     log_timeout_sec: u64,
-    checkpoint_sequence: CheckpointSequenceNumber,
+    checkpoint: VerifiedCheckpoint,
+    // accumulator: &EnqueueHandle,
 ) -> SuiResult {
     let all_tx_digests: Vec<TransactionDigest> =
         execution_digests.iter().map(|tx| tx.transaction).collect();
@@ -424,12 +435,47 @@ async fn execute_transactions(
                 periods += 1;
             }
             Ok(Err(err)) => return Err(err),
-            Ok(Ok(_)) => {
+            Ok(Ok(_effects)) => {
                 authority_store.insert_executed_transactions(
                     &all_tx_digests,
                     epoch_store.epoch(),
-                    checkpoint_sequence,
+                    checkpoint.sequence_number(),
                 )?;
+
+                // let checkpoint_seq_num = checkpoint.sequence_number();
+                // let epoch = epoch_store.epoch();
+                // let effects: Vec<TransactionEffects> =
+                //     effects.into_iter().map(|fx| fx.data().clone()).collect();
+
+                // if checkpoint.next_epoch_committee().is_some() {
+                //     // If this is the last checkpoint of the epoch, accumulation has
+                //     // already been done by CheckpointBuilder and the checkpoint
+                //     // should contain the root state hash.
+                //     let checkpoint_root_hash = checkpoint.root_state_hash().unwrap();
+                //     let state = State {
+                //         effects,
+                //         end_of_epoch_flag: true,
+                //         checkpoint_seq_num,
+                //     };
+                //     accumulator.enqueue(state)?;
+                //     let local_root_hash = accumulator.notify_read_root_hash()?;
+                //     assert!(
+                //         local_root_hash == checkpoint_root_hash,
+                //         "Root state hash mismatch for epoch {:?}. local: {local_root_hash:?}, checkpoint: {checkpoint_root_hash:?}",
+                //         epoch,
+                //         local_root_hash,
+                //         checkpoint_root_hash
+                //     );
+                // } else {
+                //     let state = State {
+                //         effects,
+                //         end_of_epoch_flag: false,
+                //         checkpoint_seq_num,
+                //     };
+                //     accumulator.enqueue(state)?;
+                //     accumulator.notify_read_hash()?;
+                // }
+
                 return Ok(());
             }
         }
