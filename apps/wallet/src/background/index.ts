@@ -85,4 +85,8 @@ if (!isSessionStorageSupported()) {
 
 NetworkEnv.on('changed', (network) => {
     connections.notifyUI({ event: 'networkChanged', network });
+    connections.notifyContentScript({
+        event: 'walletStatusChange',
+        change: { network },
+    });
 });
