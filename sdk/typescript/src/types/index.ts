@@ -11,4 +11,5 @@ export * from './version';
 export * from './faucet';
 export * from './normalized';
 export * from './validator';
+export * from './committee';
 export * from './coin';
