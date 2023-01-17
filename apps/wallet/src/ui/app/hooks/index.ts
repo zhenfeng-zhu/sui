@@ -21,10 +21,7 @@ export { useTransactionDryRun } from './useTransactionDryRun';
 export { useTransactionSummary } from './useTransactionSummary';
 export { useRpc } from './useRpc';
 export { useGetObject } from './useGetObject';
-export {
-    useGetTransactionById,
-    useGetTransactionIdByAddress,
-} from './useGetTransaction';
+export { useGetTransactionsByAddress } from './useGetTransactionsByAddress';
 export * from './useSigner';
 export * from './useIndividualCoinMaxBalance';
 export * from './useOriginbyteNft';
