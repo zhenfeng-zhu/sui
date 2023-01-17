@@ -5,6 +5,7 @@ import { lte, coerce } from 'semver';
 import Browser from 'webextension-polyfill';
 
 import { LOCK_ALARM_NAME } from './Alarms';
+import NetworkEnv from './NetworkEnv';
 import Permissions from './Permissions';
 import { Connections } from './connections';
 import Keyring from './keyring';
@@ -40,16 +41,23 @@ const connections = new Connections();
 
 Permissions.permissionReply.subscribe((permission) => {
     if (permission) {
-        connections.notifyForPermissionReply(permission);
+        connections.notifyContentScript({
+            event: 'permissionReply',
+            permission,
+        });
     }
 });
 
 Permissions.on('connectedAccountsChanged', ({ origin, accounts }) => {
-    connections.notifyWalletStatusChange(origin, { accounts });
+    connections.notifyContentScript({
+        event: 'walletStatusChange',
+        origin,
+        change: { accounts },
+    });
 });
 
 Keyring.on('lockedStatusUpdate', (isLocked: boolean) => {
-    connections.notifyForLockedStatusUpdate(isLocked);
+    connections.notifyUI({ event: 'lockStatusUpdate', isLocked });
 });
 
 Browser.alarms.onAlarm.addListener((alarm) => {
@@ -74,3 +82,7 @@ if (!isSessionStorageSupported()) {
         }
     });
 }
+
+NetworkEnv.on('changed', (network) => {
+    connections.notifyUI({ event: 'networkChanged', network });
+});
