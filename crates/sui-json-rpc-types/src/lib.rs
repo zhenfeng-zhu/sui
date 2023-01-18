@@ -1097,6 +1097,10 @@ pub enum SuiPastObjectRead<T: SuiData> {
         asked_version: SequenceNumber,
         latest_version: SequenceNumber,
     },
+    Wrapped {
+        object_id: ObjectID,
+        wrapped_version: SequenceNumber,
+    },
 }
 
 impl<T: SuiData> SuiPastObjectRead<T> {
@@ -1123,6 +1127,13 @@ impl<T: SuiData> SuiPastObjectRead<T> {
                 object_id: *object_id,
                 asked_version: *asked_version,
                 latest_version: *latest_version,
+            }),
+            SuiPastObjectRead::Wrapped {
+                object_id,
+                wrapped_version,
+            } => Err(SuiError::ObjectWrapped {
+                object_id: *object_id,
+                version: *wrapped_version,
             }),
         }
     }
@@ -1151,6 +1162,13 @@ impl<T: SuiData> SuiPastObjectRead<T> {
                 asked_version,
                 latest_version,
             }),
+            SuiPastObjectRead::Wrapped {
+                object_id,
+                wrapped_version,
+            } => Err(SuiError::ObjectWrapped {
+                object_id,
+                version: wrapped_version,
+            }),
         }
     }
 }
@@ -1178,6 +1196,13 @@ impl<T: SuiData> TryFrom<PastObjectRead> for SuiPastObjectRead<T> {
                 object_id,
                 asked_version,
                 latest_version,
+            }),
+            PastObjectRead::Wrapped {
+                object_id,
+                wrapped_version,
+            } => Ok(SuiPastObjectRead::Wrapped {
+                object_id,
+                wrapped_version,
             }),
         }
     }

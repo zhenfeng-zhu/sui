@@ -780,6 +780,10 @@ pub enum PastObjectRead {
         asked_version: SequenceNumber,
         latest_version: SequenceNumber,
     },
+    Wrapped {
+        object_id: ObjectID,
+        wrapped_version: SequenceNumber,
+    },
 }
 
 impl PastObjectRead {
@@ -804,6 +808,13 @@ impl PastObjectRead {
                 object_id,
                 asked_version,
                 latest_version,
+            }),
+            PastObjectRead::Wrapped {
+                object_id,
+                wrapped_version,
+            } => Err(SuiError::ObjectWrapped {
+                object_id,
+                version: wrapped_version,
             }),
         }
     }
@@ -834,6 +845,15 @@ impl Display for PastObjectRead {
                 latest_version,
             } => {
                 write!(f, "PastObjectRead::VersionTooHigh ({:?}, asked sequence number {:?}, latest sequence number {:?})", object_id, asked_version, latest_version)
+            }
+            PastObjectRead::Wrapped {
+                object_id,
+                wrapped_version,
+            } => {
+                write!(
+                    f,
+                    "PastObjectRead::Wrapped ({object_id}, {wrapped_version})"
+                )
             }
         }
     }

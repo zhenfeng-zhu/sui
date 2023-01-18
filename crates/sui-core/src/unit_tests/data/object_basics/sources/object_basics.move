@@ -23,6 +23,11 @@ module examples::object_basics {
         new_value: u64
     }
 
+    struct ObjectWrapper has key, store {
+        id: UID,
+        object: Object,
+    }
+
     public entry fun create(value: u64, recipient: address, ctx: &mut TxContext) {
         transfer::transfer(
             Object { id: object::new(ctx), value },
@@ -104,5 +109,21 @@ module examples::object_basics {
             sui::dynamic_field::remove<bool, Object>(&mut o.id, true),
             tx_context::sender(ctx),
         );
+    }
+
+    public entry fun wrap_object(object: Object, ctx: &mut TxContext) {
+        transfer::transfer(
+            ObjectWrapper { id: object::new(ctx), object },
+            tx_context::sender(ctx)
+        )
+    }
+
+    public entry fun unwrap_object(wrapper: ObjectWrapper, ctx: &mut TxContext) {
+        let ObjectWrapper{id, object } = wrapper;
+        object::delete(id);
+        transfer::transfer(
+            object,
+            tx_context::sender(ctx)
+        )
     }
 }
