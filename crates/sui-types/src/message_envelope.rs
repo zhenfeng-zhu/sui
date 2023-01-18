@@ -115,6 +115,8 @@ where
         }
     }
 
+    pub fn new_with_signature(data: T, sig: AuthoritySignInfo)
+
     pub fn epoch(&self) -> EpochId {
         self.auth_signature.epoch
     }

@@ -1284,6 +1284,16 @@ where
                 |mut state, name, weight, result| {
                     Box::pin(async move {
                         match result {
+                            Ok(response) => {
+                                match response {
+                                    VerifiedTransactionInfoResponse::Signed(signed) => {
+                                        self.handle_response_with_signed_transaction(&mut state, name, weight, tx_digest, signed, transaction_ref, threshold);
+                                    }
+                                    VerifiedTransactionInfoResponse::Certified(cert) => {
+
+                                    }
+                                }
+                            }
                             Ok(VerifiedTransactionInfoResponse {
                                 certified_transaction: Some(inner_certificate),
                                 signed_effects: Some(inner_effects),
@@ -1475,6 +1485,7 @@ where
                     state.signatures.clone(),
                     &self.committee,
                 )
+                // TODO: We don't need to verify again.
                 .and_then(|ct| ct.verify(&self.committee));
                 match ct {
                     Ok(ct) => {
