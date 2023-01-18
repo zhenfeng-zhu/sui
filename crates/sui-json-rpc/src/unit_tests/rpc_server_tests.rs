@@ -80,7 +80,7 @@ async fn test_public_transfer_object() -> Result<(), anyhow::Error> {
         )
         .await?;
 
-    let SuiExecuteTransactionResponse::EffectsCert { effects, .. } = tx_response;
+    let SuiExecuteTransactionResponse { effects, .. } = tx_response;
     assert_eq!(
         dryrun_response.transaction_digest,
         effects.effects.transaction_digest
@@ -117,7 +117,7 @@ async fn test_publish() -> Result<(), anyhow::Error> {
             ExecuteTransactionRequestType::WaitForLocalExecution,
         )
         .await?;
-    matches!(tx_response, SuiExecuteTransactionResponse::EffectsCert {effects, ..} if effects.effects.created.len() == 6);
+    matches!(tx_response, SuiExecuteTransactionResponse {effects, ..} if effects.effects.created.len() == 6);
     Ok(())
 }
 
@@ -168,7 +168,7 @@ async fn test_move_call() -> Result<(), anyhow::Error> {
             ExecuteTransactionRequestType::WaitForLocalExecution,
         )
         .await?;
-    matches!(tx_response, SuiExecuteTransactionResponse::EffectsCert {effects, ..} if effects.effects.created.len() == 1);
+    matches!(tx_response, SuiExecuteTransactionResponse {effects, ..} if effects.effects.created.len() == 1);
     Ok(())
 }
 
@@ -276,7 +276,7 @@ async fn test_get_metadata() -> Result<(), anyhow::Error> {
         )
         .await?;
 
-    let SuiExecuteTransactionResponse::EffectsCert { effects, .. } = tx_response;
+    let SuiExecuteTransactionResponse { effects, .. } = tx_response;
 
     let package_id = effects
         .effects
@@ -335,7 +335,7 @@ async fn test_get_total_supply() -> Result<(), anyhow::Error> {
         )
         .await?;
 
-    let SuiExecuteTransactionResponse::EffectsCert { effects, .. } = tx_response;
+    let SuiExecuteTransactionResponse { effects, .. } = tx_response;
 
     let package_id = effects
         .effects
@@ -413,7 +413,7 @@ async fn test_get_total_supply() -> Result<(), anyhow::Error> {
         )
         .await?;
 
-    let SuiExecuteTransactionResponse::EffectsCert { effects, .. } = tx_response;
+    let SuiExecuteTransactionResponse { effects, .. } = tx_response;
 
     assert_eq!(SuiExecutionStatus::Success, effects.effects.status);
 
@@ -467,7 +467,7 @@ async fn test_get_transaction() -> Result<(), anyhow::Error> {
     for tx_digest in tx {
         let response: SuiTransactionResponse = http_client.get_transaction(tx_digest).await?;
         assert!(tx_responses.iter().any(
-            |resp| matches!(resp, SuiExecuteTransactionResponse::EffectsCert {effects, ..} if effects.effects.transaction_digest == response.effects.transaction_digest)
+            |resp| matches!(resp, SuiExecuteTransactionResponse {effects, ..} if effects.effects.transaction_digest == response.effects.transaction_digest)
         ))
     }
 
