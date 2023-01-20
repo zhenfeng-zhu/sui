@@ -15,10 +15,9 @@ import {
     FloatingPortal,
     arrow,
 } from '@floating-ui/react-dom-interactions';
+import { Info12 as InfoSvg } from '@mysten/icons';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useRef, useState } from 'react';
-
-import { ReactComponent as InfoSvg } from './icons/info.svg';
 
 import type { Placement } from '@floating-ui/react-dom-interactions';
 import type { ReactNode, CSSProperties } from 'react';
