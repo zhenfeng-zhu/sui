@@ -204,6 +204,7 @@ impl<A> QuorumDriver<A> {
                     .inc();
             }
         }
+        debug!(?tx_digest, "notify QuorumDriver task result");
         self.notifier.notify(tx_digest, response);
     }
 }
@@ -811,7 +812,7 @@ fn convert_to_quorum_driver_error_if_non_retryable(
             let threshold = validity_threshold(total_stake);
             let mut non_recoverable_errors = HashMap::new();
             for (error, mut validators, stake) in errors {
-                if !is_error_retryable(&error) {
+                if !is_error_retryable(&error, tx_digest) {
                     non_recoverable_bad_stake += stake;
                     let (stakes_entry, validators_entry) = non_recoverable_errors
                         .entry(error.clone())
@@ -842,7 +843,7 @@ fn convert_to_quorum_driver_error_if_non_retryable(
     }
 }
 
-fn is_error_retryable(error: &SuiError) -> bool {
+fn is_error_retryable(error: &SuiError, tx_digest: &TransactionDigest) -> bool {
     match error {
         // Network error
         SuiError::RpcError { .. } => true,
@@ -857,8 +858,11 @@ fn is_error_retryable(error: &SuiError) -> bool {
         SuiError::ExecutionError(..) => false,
         SuiError::ByzantineAuthoritySuspicion { .. } => false,
         SuiError::QuorumFailedToGetEffectsQuorumWhenProcessingTransaction { .. } => false,
+        SuiError::ObjectVersionUnavailableForConsumption { .. } => false,
+        SuiError::GasBudgetTooHigh { .. } => false,
+        SuiError::GasBudgetTooLow { .. } => false,
         other => {
-            debug!("uncategorized tx error: {other}");
+            debug!(?tx_digest, "uncategorized tx error: {other}");
             false
         }
     }

@@ -290,7 +290,8 @@ impl RegistryService {
 #[cfg(test)]
 mod tests {
     use crate::RegistryService;
-    use prometheus::{IntCounter, Registry};
+    use prometheus::IntCounter;
+    use prometheus::Registry;
 
     #[test]
     fn registry_service() {

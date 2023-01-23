@@ -229,7 +229,7 @@ where
             .write_pending_transaction_maybe(&transaction)
             .await?
         {
-            self.quorum_driver().submit_transaction(transaction).await?;
+            self.quorum_driver().submit_transaction_no_ticket(transaction).await?;
         }
         Ok(ticket)
     }
