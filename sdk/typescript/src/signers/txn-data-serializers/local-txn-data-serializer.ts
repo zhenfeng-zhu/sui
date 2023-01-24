@@ -9,6 +9,9 @@ import {
   PAY_MODULE_NAME,
   SUI_FRAMEWORK_ADDRESS,
   PAY_SPLIT_COIN_VEC_FUNC_NAME,
+  SUI_SYSTEM_MODULE_NAME,
+  WITHDRAW_DELEGATION_FUN_NAME,
+  SWITCH_DELEGATION_FUN_NAME,
   ObjectId,
   SuiAddress,
   SUI_TYPE_ARG,
@@ -18,6 +21,8 @@ import {
   SuiObjectRef,
   TRANSACTION_DATA_TYPE_TAG,
   deserializeTransactionBytesToTransactionData,
+  ADD_DELEGATION_MUL_COIN_FUN_NAME,
+  ADD_DELEGATION_LOCKED_COIN_FUN_NAME,
 } from '../../types';
 import {
   MoveCallTransaction,
@@ -33,10 +38,14 @@ import {
   SignableTransaction,
   UnserializedSignableTransaction,
   TransactionBuilderMode,
+  RequestAddDelegationTransaction,
+  RequestWithdrawDelegationTransaction,
+  RequestSwitchDelegationTransaction,
 } from './txn-data-serializer';
 import { Provider } from '../../providers/provider';
 import { CallArgSerializer } from './call-arg-serializer';
 import { TypeTagSerializer } from './type-tag-serializer';
+import { nullable, optional } from 'superstruct';
 
 export class LocalTxnDataSerializer implements TxnDataSerializer {
   /**
@@ -196,6 +205,65 @@ export class LocalTxnDataSerializer implements TxnDataSerializer {
             arguments: [splitCoin.coinObjectId, splitCoin.splitAmounts],
             gasPayment: splitCoin.gasPayment,
             gasBudget: splitCoin.gasBudget,
+          },
+        });
+      case 'requestAddDelegation':
+        const requestAddDelegation =
+          unserializedTxn.data as RequestAddDelegationTransaction;
+        const (oref, type_) = await this.get_object_ref_and_type(requestAddDelegation.coins)
+        return this.constructTransactionData(signerAddress, {
+          kind: 'moveCall',
+          data: {
+            packageObjectId: SUI_FRAMEWORK_ADDRESS,
+            module: SUI_SYSTEM_MODULE_NAME,
+            function: ADD_DELEGATION_MUL_COIN_FUN_NAME,
+            typeArguments: [],
+            arguments: [
+              requestAddDelegation.coins,
+              requestAddDelegation.amount,
+              requestAddDelegation.validator,
+            ],
+            gasPayment: requestAddDelegation.gasPayment,
+            gasBudget: requestAddDelegation.gasBudget,
+          },
+        });
+      case 'requestWithdrawDelegation':
+        const requestWithdrawDelegation =
+          unserializedTxn.data as RequestWithdrawDelegationTransaction;
+        return this.constructTransactionData(signerAddress, {
+          kind: 'moveCall',
+          data: {
+            packageObjectId: SUI_FRAMEWORK_ADDRESS,
+            module: SUI_SYSTEM_MODULE_NAME,
+            function: WITHDRAW_DELEGATION_FUN_NAME,
+            typeArguments: [],
+            arguments: [
+              requestWithdrawDelegation.delegation,
+              requestWithdrawDelegation.stakedSui,
+              requestWithdrawDelegation.principalWithdrawAmount,
+            ],
+            gasPayment: requestWithdrawDelegation.gasPayment,
+            gasBudget: requestWithdrawDelegation.gasBudget,
+          },
+        });
+      case 'requestSwitchDelegation':
+        const requestSwitchDelegation =
+          unserializedTxn.data as RequestSwitchDelegationTransaction;
+        return this.constructTransactionData(signerAddress, {
+          kind: 'moveCall',
+          data: {
+            packageObjectId: SUI_FRAMEWORK_ADDRESS,
+            module: SUI_SYSTEM_MODULE_NAME,
+            function: SWITCH_DELEGATION_FUN_NAME,
+            typeArguments: [],
+            arguments: [
+              requestSwitchDelegation.delegation,
+              requestSwitchDelegation.stakedSui,
+              requestSwitchDelegation.newValidatorAddress,
+              requestSwitchDelegation.switchPoolTokenAmount,
+            ],
+            gasPayment: requestSwitchDelegation.gasPayment,
+            gasBudget: requestSwitchDelegation.gasBudget,
           },
         });
       case 'publish':

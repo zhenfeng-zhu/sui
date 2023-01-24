@@ -85,6 +85,31 @@ export interface SplitCoinTransaction {
   gasBudget: number;
 }
 
+export interface RequestAddDelegationTransaction {
+  coins: ObjectId[];
+  amount: number | null;
+  validator: SuiAddress;
+  gasPayment?: ObjectId;
+  gasBudget: number;
+}
+
+export interface RequestWithdrawDelegationTransaction {
+  delegation: ObjectId;
+  stakedSui: ObjectId;
+  principalWithdrawAmount: number;
+  gasPayment?: ObjectId;
+  gasBudget: number;
+}
+
+export interface RequestSwitchDelegationTransaction {
+  delegation: ObjectId;
+  stakedSui: ObjectId;
+  newValidatorAddress: SuiAddress;
+  switchPoolTokenAmount: number;
+  gasPayment?: ObjectId;
+  gasBudget: number;
+}
+
 export interface MoveCallTransaction {
   packageObjectId: ObjectId;
   module: string;
@@ -139,6 +164,18 @@ export type UnserializedSignableTransaction =
   | {
       kind: 'publish';
       data: PublishTransaction;
+    }
+  | {
+      kind: 'requestAddDelegation';
+      data: RequestAddDelegationTransaction;
+    }
+  | {
+      kind: 'requestWithdrawDelegation';
+      data: RequestWithdrawDelegationTransaction;
+    }
+  | {
+      kind: 'requestSwitchDelegation';
+      data: RequestSwitchDelegationTransaction;
     };
 
 /** A type that represents the possible transactions that can be signed: */
