@@ -78,3 +78,4 @@ if (!isSessionStorageSupported()) {
         }
     });
 }
+console.log(Keyring);
