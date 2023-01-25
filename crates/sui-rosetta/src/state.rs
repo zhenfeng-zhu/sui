@@ -173,8 +173,13 @@ impl CheckpointBlockProvider {
             .get_latest_checkpoint_sequence_number()
             .await?;
         if last_checkpoint < head {
+            info!("indexing {last_checkpoint} to {head}");
             for seq in last_checkpoint + 1..=head {
                 let checkpoint = self.client.read_api().get_checkpoint(seq).await?;
+                info!(
+                    "indexing checkpoint {seq} with {} txs",
+                    checkpoint.content.size()
+                );
                 let resp = self.create_block_response(checkpoint).await?;
                 self.update_balance(seq, resp.block.transactions).await?;
             }
