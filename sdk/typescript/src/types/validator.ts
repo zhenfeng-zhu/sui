@@ -11,7 +11,6 @@ import {
   string,
   union,
   Infer,
-  optional,
 } from 'superstruct';
 import { SuiAddress } from './common';
 
