@@ -295,14 +295,29 @@ impl MoveCall {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub struct SharedInputObject {
+    pub id: ObjectID,
+    pub initial_shared_version: SequenceNumber,
+    pub mutable: bool,
+}
+
+impl SharedInputObject {
+    pub fn id(&self) -> ObjectID {
+        self.id
+    }
+
+    pub fn into_id_and_version(self) -> (ObjectID, SequenceNumber) {
+        (self.id, self.initial_shared_version)
+    }
+}
+
 impl SingleTransactionKind {
     pub fn contains_shared_object(&self) -> bool {
         self.shared_input_objects().next().is_some()
     }
 
-    pub fn shared_input_objects(
-        &self,
-    ) -> impl Iterator<Item = (&ObjectID, /* shared at version */ &SequenceNumber)> {
+    pub fn shared_input_objects(&self) -> impl Iterator<Item = SharedInputObject> + '_ {
         match &self {
             Self::Call(_) | Self::ChangeEpoch(_) => {
                 Either::Left(self.all_move_call_shared_input_objects())
@@ -315,9 +330,7 @@ impl SingleTransactionKind {
     /// It covers both Call and ChangeEpoch transaction kind, because both makes Move calls.
     /// This function is split out of shared_input_objects because Either type only supports
     /// two variants, while we need to be able to return three variants (Flatten, Once, Empty).
-    fn all_move_call_shared_input_objects(
-        &self,
-    ) -> impl Iterator<Item = (&ObjectID, /* shared at version */ &SequenceNumber)> {
+    fn all_move_call_shared_input_objects(&self) -> impl Iterator<Item = SharedInputObject> + '_ {
         match &self {
             Self::Call(MoveCall { arguments, .. }) => Either::Left(
                 arguments
@@ -327,18 +340,26 @@ impl SingleTransactionKind {
                         CallArg::Object(ObjectArg::SharedObject {
                             id,
                             initial_shared_version,
-                            .. // todo (RWLocks) - differentiate immutable shared refs
-                        }) => Some(vec![(id, initial_shared_version)]),
+                            mutable,
+                        }) => Some(vec![SharedInputObject {
+                            id: *id,
+                            initial_shared_version: *initial_shared_version,
+                            mutable: *mutable,
+                        }]),
                         CallArg::ObjVec(vec) => Some(
                             vec.iter()
                                 .filter_map(|obj_arg| {
                                     if let ObjectArg::SharedObject {
                                         id,
                                         initial_shared_version,
-                                        .. // todo (RWLocks) - differentiate immutable shared refs
+                                        mutable,
                                     } = obj_arg
                                     {
-                                        Some((id, initial_shared_version))
+                                        Some(SharedInputObject {
+                                            id: *id,
+                                            initial_shared_version: *initial_shared_version,
+                                            mutable: *mutable,
+                                        })
                                     } else {
                                         None
                                     }
@@ -348,10 +369,11 @@ impl SingleTransactionKind {
                     })
                     .flatten(),
             ),
-            Self::ChangeEpoch(_) => Either::Right(iter::once((
-                &SUI_SYSTEM_STATE_OBJECT_ID,
-                &SUI_SYSTEM_STATE_OBJECT_SHARED_VERSION,
-            ))),
+            Self::ChangeEpoch(_) => Either::Right(iter::once(SharedInputObject {
+                id: SUI_SYSTEM_STATE_OBJECT_ID,
+                initial_shared_version: SUI_SYSTEM_STATE_OBJECT_SHARED_VERSION,
+                mutable: true,
+            })),
             _ => unreachable!(),
         }
     }
@@ -561,9 +583,7 @@ impl TransactionKind {
         Ok(inputs)
     }
 
-    pub fn shared_input_objects(
-        &self,
-    ) -> impl Iterator<Item = (&ObjectID, /* shared at version */ &SequenceNumber)> {
+    pub fn shared_input_objects(&self) -> impl Iterator<Item = SharedInputObject> + '_ {
         match &self {
             TransactionKind::Single(s) => Either::Left(s.shared_input_objects()),
             TransactionKind::Batch(b) => {
@@ -903,9 +923,7 @@ impl TransactionData {
         self.shared_input_objects().next().is_some()
     }
 
-    pub fn shared_input_objects(
-        &self,
-    ) -> impl Iterator<Item = (&ObjectID, /* shared at version */ &SequenceNumber)> {
+    pub fn shared_input_objects(&self) -> impl Iterator<Item = SharedInputObject> + '_ {
         self.kind.shared_input_objects()
     }
 
@@ -1047,9 +1065,7 @@ impl<S> Envelope<SenderSignedData, S> {
         self.shared_input_objects().next().is_some()
     }
 
-    pub fn shared_input_objects(
-        &self,
-    ) -> impl Iterator<Item = (&ObjectID, /* shared at version */ &SequenceNumber)> {
+    pub fn shared_input_objects(&self) -> impl Iterator<Item = SharedInputObject> + '_ {
         self.data().intent_message.value.kind.shared_input_objects()
     }
 
@@ -2213,7 +2229,13 @@ impl InputObjects {
                         Some(*object_ref)
                     }
                 }
-                InputObjectKind::SharedMoveObject { .. } => Some(object.compute_object_reference()),
+                InputObjectKind::SharedMoveObject { mutable, .. } => {
+                    if *mutable {
+                        Some(object.compute_object_reference())
+                    } else {
+                        None
+                    }
+                }
             })
             .collect()
     }
