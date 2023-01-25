@@ -2759,7 +2759,13 @@ pub enum SuiInputObjectKind {
     SharedMoveObject {
         id: ObjectID,
         initial_shared_version: SequenceNumber,
+        #[serde(default = "bool_true")]
+        mutable: bool,
     },
+}
+
+const fn bool_true() -> bool {
+    true
 }
 
 impl From<InputObjectKind> for SuiInputObjectKind {
@@ -2770,9 +2776,11 @@ impl From<InputObjectKind> for SuiInputObjectKind {
             InputObjectKind::SharedMoveObject {
                 id,
                 initial_shared_version,
+                mutable,
             } => Self::SharedMoveObject {
                 id,
                 initial_shared_version,
+                mutable,
             },
         }
     }
