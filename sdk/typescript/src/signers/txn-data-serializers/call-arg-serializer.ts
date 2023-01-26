@@ -16,6 +16,7 @@ import {
   SuiJsonValue,
   SuiMoveNormalizedType,
   SUI_FRAMEWORK_ADDRESS,
+  UID_STRUCT_NAME,
 } from '../../types';
 import { bcs, CallArg, MoveCallTx, ObjectArg } from '../../types/sui-bcs';
 import { MoveCallTransaction } from './txn-data-serializer';
@@ -32,6 +33,12 @@ const RESOLVED_SUI_ID = {
   address: SUI_FRAMEWORK_ADDRESS,
   module: OBJECT_MODULE_NAME,
   name: ID_STRUCT_NAME,
+};
+
+const RESOLVED_SUI_UID = {
+  address: SUI_FRAMEWORK_ADDRESS,
+  module: OBJECT_MODULE_NAME,
+  name: UID_STRUCT_NAME,
 };
 
 const RESOLVED_ASCII_STR = {
@@ -296,6 +303,8 @@ export class CallArgSerializer {
       } else if (isSameStruct(normalizedType.Struct, RESOLVED_UTF8_STR)) {
         return 'utf8string';
       } else if (isSameStruct(normalizedType.Struct, RESOLVED_SUI_ID)) {
+        return 'address';
+      } else if (isSameStruct(normalizedType.Struct, RESOLVED_SUI_UID)) {
         return 'address';
       }
     }
