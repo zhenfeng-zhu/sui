@@ -181,6 +181,7 @@ impl CheckpointBlockProvider {
                     checkpoint.summary.timestamp_ms
                 );
                 let resp = self.create_block_response(checkpoint).await?;
+                info!("Updating balance");
                 self.update_balance(resp.block).await?;
             }
             self.index_store.last_checkpoint.insert(&true, &head)?;
@@ -192,6 +193,11 @@ impl CheckpointBlockProvider {
 
     async fn update_balance(&self, block: Block) -> Result<(), anyhow::Error> {
         let block_height = block.block_identifier.index;
+        let last_block_height = if block_height == 0 {
+            0
+        } else {
+            block_height - 1
+        };
         let balances: HashMap<SuiAddress, i128> =
             block
                 .transactions
@@ -204,20 +210,13 @@ impl CheckpointBlockProvider {
                 })?;
 
         for (addr, value) in balances {
-            let current_balance = self.get_balance_at_block(addr, block_height).await?;
-            let new_balance = if value.is_negative() {
-                if current_balance < value.abs() {
-                    // This can happen due to missing transactions data due to unstable validators, causing balance to
-                    // fall below zero temporarily. The problem should go away when we start using checkpoints for event and indexing
-                    warn!(
-                        "Account gas value fall below 0 at block {block_height}, address: [{addr}]"
-                    );
-                }
-                current_balance - value.abs()
-            } else {
-                current_balance + value.abs()
-            };
-
+            let current_balance = self.get_balance_at_block(addr, last_block_height).await?;
+            let new_balance = current_balance + value;
+            if new_balance < 0 {
+                // This can happen due to missing transactions data due to unstable validators, causing balance to
+                // fall below zero temporarily. The problem should go away when we start using checkpoints for event and indexing
+                warn!("Account gas value fall below 0 at block {block_height}, address: [{addr}], current balance = {current_balance}, balance change = {value}.");
+            }
             self.index_store
                 .balances
                 .insert(&(addr, block_height), &new_balance)?;
