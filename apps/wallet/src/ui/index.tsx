@@ -8,8 +8,8 @@ import { IntlProvider } from 'react-intl';
 import { Provider } from 'react-redux';
 import { HashRouter } from 'react-router-dom';
 
+import { API_ENV } from '../shared/api-env';
 import App from './app';
-import { API_ENV } from './app/ApiProvider';
 import {
     growthbook,
     setAttributes,

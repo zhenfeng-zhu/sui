@@ -4,12 +4,13 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
 import { AppType } from './AppType';
-import { DEFAULT_API_ENV, type API_ENV } from '_app/ApiProvider';
+import { DEFAULT_API_ENV } from '_app/ApiProvider';
 import {
     clearForNetworkSwitch,
     fetchAllOwnedAndRequiredObjects,
 } from '_redux/slices/sui-objects';
 import { getTransactionsByAddress } from '_redux/slices/txresults';
+import { type API_ENV } from '_src/shared/api-env';
 
 import type { PayloadAction } from '@reduxjs/toolkit';
 import type { RootState } from '_redux/RootReducer';
