@@ -1,7 +1,9 @@
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+use expect_test::expect;
 use move_core_types::account_address::AccountAddress;
+use regex::Regex;
 use std::io::Write;
 use std::{fs, io, path::Path};
 use std::{path::PathBuf, str};
@@ -14,7 +16,9 @@ use sui_types::{
 use test_utils::network::TestClusterBuilder;
 use test_utils::transaction::publish_package_with_wallet;
 
-use crate::{BytecodeSourceVerifier, SourceMode, SourceVerificationError};
+use crate::{
+  BytecodeSourceVerifier, SourceMode
+};
 
 #[tokio::test]
 async fn successful_verification() -> anyhow::Result<()> {
@@ -139,12 +143,14 @@ async fn fail_verification_bad_address() -> anyhow::Result<()> {
     let client = context.get_client().await?;
     let verifier = BytecodeSourceVerifier::new(client.read_api(), false);
 
-    assert!(matches!(
-        verifier
+    let expected = expect!["On-chain address cannot be zero"];
+    expected.assert_eq(
+        &verifier
             .verify_package_root_and_deps(&a_pkg.package, AccountAddress::ZERO)
-            .await,
-        Err(SourceVerificationError::ZeroOnChainAddresSpecifiedFailure),
-    ),);
+            .await
+            .unwrap_err()
+            .to_string(),
+    );
 
     Ok(())
 }
@@ -165,16 +171,18 @@ async fn fail_to_verify_unpublished_root() -> anyhow::Result<()> {
 
     // Trying to verify the root package, which hasn't been published -- this is going to fail
     // because there is no on-chain package to verify against.
-    assert!(matches!(
-        verifier
+    let expected = expect!["Invalid module b with error: Can't verify unpublished source"];
+    expected.assert_eq(
+        &verifier
             .verify_package(
                 &b_pkg.package,
                 /* verify_deps */ false,
-                SourceMode::Verify
+                SourceMode::Verify,
             )
-            .await,
-        Err(SourceVerificationError::InvalidModuleFailure { .. }),
-    ));
+            .await
+            .unwrap_err()
+            .to_string(),
+    );
 
     Ok(())
 }
@@ -252,26 +260,32 @@ async fn package_not_found() -> anyhow::Result<()> {
     let client = context.get_client().await?;
     let verifier = BytecodeSourceVerifier::new(client.read_api(), false);
 
-    assert!(matches!(
-        verifier.verify_package_deps(&a_pkg.package).await,
-        Err(SourceVerificationError::SuiObjectRefFailure(_)),
-    ),);
+    let expected = expect!["Dependency object does not exist or was deleted: ObjectNotFound { object_id: <id>, version: None }"];
+    let got = verifier
+        .verify_package_deps(&a_pkg.package)
+        .await
+        .unwrap_err()
+        .to_string();
+    expected.assert_eq(&sanitize_id(got));
 
-    assert!(matches!(
-        // Subst address here doesnt matter
+    let expected = expect!["Dependency object does not exist or was deleted: ObjectNotFound { object_id: <id>, version: None }"];
+    let got =
+    // Subst address here doesnt matter
         verifier
             .verify_package_root_and_deps(&a_pkg.package, AccountAddress::random())
-            .await,
-        Err(SourceVerificationError::SuiObjectRefFailure(_)),
-    ),);
+            .await
+            .unwrap_err()
+            .to_string();
+    expected.assert_eq(&sanitize_id(got));
 
-    assert!(matches!(
+    let expected = expect!["Dependency object does not exist or was deleted: ObjectNotFound { object_id: <id>, version: None }"];
+    let got = verifier
         // Subst address here doesnt matter
-        verifier
-            .verify_package_root(&a_pkg.package, AccountAddress::random())
-            .await,
-        Err(SourceVerificationError::SuiObjectRefFailure(_)),
-    ),);
+        .verify_package_root(&a_pkg.package, AccountAddress::random())
+        .await
+        .unwrap_err()
+        .to_string();
+    expected.assert_eq(&sanitize_id(got));
 
     Ok(())
 }
@@ -291,13 +305,14 @@ async fn dependency_is_an_object() -> anyhow::Result<()> {
     let client = context.get_client().await?;
     let verifier = BytecodeSourceVerifier::new(client.read_api(), false);
 
-    assert!(matches!(
-        verifier.verify_package_deps(&a_pkg.package).await,
-        Err(SourceVerificationError::ObjectFoundWhenPackageExpected(
-            SUI_SYSTEM_STATE_OBJECT_ID,
-            _,
-        )),
-    ),);
+    let expected = expect!["Dependency ID contains a Sui object, not a Move package: 0x0000000000000000000000000000000000000005"];
+    expected.assert_eq(
+        &verifier
+            .verify_package_deps(&a_pkg.package)
+            .await
+            .unwrap_err()
+            .to_string(),
+    );
 
     Ok(())
 }
@@ -329,12 +344,8 @@ async fn module_not_found_on_chain() -> anyhow::Result<()> {
         panic!("Expected verification to fail");
     };
 
-    let SourceVerificationError::OnChainDependencyNotFound { package, module } = err else {
-        panic!("Expected OnChainDependencyNotFound, got: {:?}", err);
-    };
-
-    assert_eq!(package, "b".into());
-    assert_eq!(module, "c".into());
+    let expected = expect!["On-chain version of dependency b::c was not found."];
+    expected.assert_eq(&err.to_string());
 
     Ok(())
 }
@@ -367,12 +378,8 @@ async fn module_not_found_locally() -> anyhow::Result<()> {
         panic!("Expected verification to fail");
     };
 
-    let SourceVerificationError::LocalDependencyNotFound { address, module } = err else {
-        panic!("Expected LocalDependencyNotFound, got: {:?}", err);
-    };
-
-    assert_eq!(address, b_ref.0.into());
-    assert_eq!(module.as_ref(), "d");
+    let expected = expect!["Local version of dependency <id>::d was not found."];
+    expected.assert_eq(&sanitize_id(err.to_string()));
 
     Ok(())
 }
@@ -383,6 +390,7 @@ async fn module_bytecode_mismatch() -> anyhow::Result<()> {
     let sender = cluster.get_address_0();
     let context = &mut cluster.wallet;
 
+    // On-chain
     let b_ref = {
         let fixtures = tempfile::tempdir()?;
         let b_src = copy_package(&fixtures, "b", [("b", SuiAddress::ZERO)]).await?;
@@ -397,6 +405,7 @@ async fn module_bytecode_mismatch() -> anyhow::Result<()> {
         publish_package(context, sender, b_src).await
     };
 
+    // Local
     let (a_pkg, a_ref) = {
         let fixtures = tempfile::tempdir()?;
         let b_id = b_ref.0.into();
@@ -422,27 +431,22 @@ async fn module_bytecode_mismatch() -> anyhow::Result<()> {
         panic!("Expected verification to fail");
     };
 
-    let SourceVerificationError::ModuleBytecodeMismatch { address, package, module } = err else {
-        panic!("Expected ModuleBytecodeMismatch, got: {:?}", err);
-    };
-
-    assert_eq!(address, b_ref.0.into());
-    assert_eq!(package, "b".into());
-    assert_eq!(module, "c".into());
+    let expected = expect!["Local dependency did not match its on-chain version at <id>::b::c"];
+    expected.assert_eq(&sanitize_id(err.to_string()));
 
     let Err(err) = verifier.verify_package_root(&a_pkg.package, a_addr.into()).await else {
         panic!("Expected verification to fail");
     };
 
-    let SourceVerificationError::ModuleBytecodeMismatch { address, package, module } = err else {
-        panic!("Expected ModuleBytecodeMismatch, got: {:?}", err);
-    };
-
-    assert_eq!(address, a_addr.into());
-    assert_eq!(package, "a".into());
-    assert_eq!(module, "a".into());
+    let expected = expect!["Local dependency did not match its on-chain version at <id>::a::a"];
+    expected.assert_eq(&sanitize_id(err.to_string()));
 
     Ok(())
+}
+
+fn sanitize_id(message: String) -> String {
+    let re = Regex::new(r"(0x)?[a-z0-9]{40}").unwrap();
+    return re.replace_all(&message, "<id>").into();
 }
 
 /// Compile the package at absolute path `package`.

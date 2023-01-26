@@ -1,10 +1,11 @@
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+use core::fmt;
 use futures::future;
 use move_binary_format::access::ModuleAccess;
 use move_binary_format::CompiledModule;
-use core::fmt;
+use std::error::Error as StdError;
 use std::{collections::HashMap, fmt::Debug};
 use thiserror::Error;
 
@@ -57,22 +58,39 @@ pub enum SourceVerificationError {
     InvalidModuleFailure { name: String, message: String },
 }
 
-type AggregateSourceVerificationError = Vec<Box<SourceVerificationError>>;
+#[derive(Debug)]
+pub struct AggregateSourceVerificationError(Vec<Box<SourceVerificationError>>);
 
 impl From<SourceVerificationError> for AggregateSourceVerificationError {
     fn from(error: SourceVerificationError) -> Self {
-	vec![error.into()]
+        AggregateSourceVerificationError(vec![error.into()])
+    }
+}
+
+impl fmt::Display for AggregateSourceVerificationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let AggregateSourceVerificationError(errors) = self;
+        for (i, error) in errors.iter().enumerate() {
+            if i != 0 {
+                write!(f, "Next error:")?;
+            }
+	    write!(f, "{}", error)?;
+        }
+        Ok(())
+    }
+}
+
+impl StdError for AggregateSourceVerificationError {
+    fn source(&self) -> Option<&(dyn StdError + 'static)> {
+        None // FIXME
     }
 }
 
 /*
-struct AggregateSourceVerificationError;
-
-impl Error for AggregateSourceVerificationError {}
-
-impl fmt::Display for AggregateSourceVerificationError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-
+impl PartialEq for AggregateSourceVerificationError {
+    fn eq(&self, other: &Self) -> bool {
+    let (AggregateSourceVerificationError(left), AggregateSourceVerificationError(right)) = (self, other);
+    return left.iter().cmp(right.iter()) == Ordering::Equal;
     }
 }
 */
@@ -166,9 +184,9 @@ impl<'a> BytecodeSourceVerifier<'a> {
         // On-chain address for matching root package cannot be zero
         if let SourceMode::VerifyAt(root_address) = &source_mode {
             if *root_address == AccountAddress::ZERO {
-                return Err(vec![
+                return Err(AggregateSourceVerificationError(vec![
                     SourceVerificationError::ZeroOnChainAddresSpecifiedFailure.into(),
-                ]);
+                ]));
             }
         }
 
@@ -177,7 +195,7 @@ impl<'a> BytecodeSourceVerifier<'a> {
             .on_chain_bytes(local_modules.keys().map(|(addr, _)| *addr))
             .await?;
 
-	let mut errors = Vec::new();
+        let mut errors = Vec::new();
         for ((address, module), (package, local_bytes)) in local_modules {
             let Some(on_chain_bytes) = on_chain_modules.remove(&(address, module)) else {
                 errors.push(SourceVerificationError::OnChainDependencyNotFound {
@@ -189,11 +207,14 @@ impl<'a> BytecodeSourceVerifier<'a> {
             // compare local bytecode to on-chain bytecode to ensure integrity of our
             // dependencies
             if local_bytes != on_chain_bytes {
-                errors.push(SourceVerificationError::ModuleBytecodeMismatch {
-                    address,
-                    package,
-                    module,
-                }.into());
+                errors.push(
+                    SourceVerificationError::ModuleBytecodeMismatch {
+                        address,
+                        package,
+                        module,
+                    }
+                    .into(),
+                );
             }
 
             if self.verbose {
@@ -207,12 +228,13 @@ impl<'a> BytecodeSourceVerifier<'a> {
         }
 
         if let Some(((address, module), _)) = on_chain_modules.into_iter().next() {
-            errors.push(SourceVerificationError::LocalDependencyNotFound { address, module }.into());
+            errors
+                .push(SourceVerificationError::LocalDependencyNotFound { address, module }.into());
         }
 
-	if !errors.is_empty() {
-	    return Err(errors);
-	}
+        if !errors.is_empty() {
+            return Err(AggregateSourceVerificationError(errors));
+        }
 
         Ok(())
     }
