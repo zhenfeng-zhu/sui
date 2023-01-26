@@ -9,13 +9,14 @@ use crate::types::{
 use crate::Error;
 use anyhow::anyhow;
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use mysten_metrics::spawn_monitored_task;
 use rocksdb::Options;
 use std::collections::HashMap;
 use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, UNIX_EPOCH};
 use sui_sdk::apis::Checkpoint;
 use sui_sdk::SuiClient;
 use sui_storage::default_db_options;
@@ -175,16 +176,16 @@ impl CheckpointBlockProvider {
         if last_checkpoint < head {
             for seq in last_checkpoint + 1..=head {
                 let checkpoint = self.client.read_api().get_checkpoint(seq).await?;
+                let timestamp = UNIX_EPOCH + Duration::from_millis(checkpoint.summary.timestamp_ms);
                 info!(
                     "indexing checkpoint {seq} with {} txs, timestamp: {}",
                     checkpoint.content.size(),
-                    checkpoint.summary.timestamp_ms
+                    DateTime::<Utc>::from(timestamp).format("%Y-%m-%d %H:%M:%S")
                 );
                 let resp = self.create_block_response(checkpoint).await?;
-                info!("Updating balance");
                 self.update_balance(resp.block).await?;
+                self.index_store.last_checkpoint.insert(&true, &seq)?;
             }
-            self.index_store.last_checkpoint.insert(&true, &head)?;
         } else {
             debug!("No new checkpoints.")
         };
